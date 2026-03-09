@@ -1,0 +1,85 @@
+==================checks before and after import/export Data Pump on both in source vs target schema ===================
+###the idea is to clone all the changes in Prod to Build###
+1-> checks before export & gather state the schemas one by one
+2-> checks before import & gather state the schemas one by one
+3-> delete the target schema from Biuld
+4-> import the dump files from Prod
+5-> checks after import 
+
+--check DB version on both
+SELECT banner 
+FROM v$version 
+WHERE banner LIKE 'Oracle Database%';
+--Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+-- MUST BUILD version >= PROD version
+
+--see character set , must be the same 
+SELECT value FROM nls_database_parameters 
+WHERE parameter='NLS_CHARACTERSET';
+--AL32UTF8
+
+--get the size of all schemas that has objects
+COLUMN schema_name FORMAT A30
+COLUMN size_gb FORMAT 999,999,999.99
+
+SELECT 
+    u.username AS schema_name,
+    ROUND(SUM(s.bytes)/1024/1024/1024,2) AS size_gb
+FROM dba_users u
+JOIN dba_segments s
+     ON u.username = s.owner
+GROUP BY u.username
+HAVING SUM(s.bytes) > 0
+ORDER BY size_gb DESC;
+
+--OR
+--check size for spesific schema 
+COLUMN schema_name FORMAT A30
+COLUMN size_gb FORMAT 999,999,999.99
+SELECT tablespace_name, OWNER, 
+       ROUND(SUM(bytes)/1024/1024/1024,2) size_gb
+FROM dba_segments
+WHERE owner='B1'
+GROUP BY tablespace_name, OWNER; 
+--4.3 GB
+
+--Compare the number of objects 
+SELECT owner,COUNT(*) AS object_count
+   FROM dba_objects
+   GROUP BY owner
+   ORDER BY object_count DESC;
+
+--get the count of each object type in specific schema
+SELECT object_type, COUNT(*) as object_count 
+FROM dba_objects 
+WHERE owner = 'B1' 
+GROUP BY object_type 
+ORDER BY object_type; 
+--OUTPUT LIKE:
+OBJECT_TYPE             OBJECT_COUNT
+----------------------- ------------
+FUNCTION                          32
+INDEX                              3
+PROCEDURE                         49
+SEQUENCE                           2
+TABLE                            107
+VIEW                               7
+
+
+--gather stats through schema
+exec DBMS_STATS.GATHER_SCHEMA_STATS('B1', method_opt => 'FOR ALL COLUMNS SIZE 1', CASCADE=> TRUE,options=>'GATHER');
+
+--Drop the schema entirely
+--Ask for DOWNTIME before this
+DROP USER B1 CASCADE;
+
+--IMPORT STATMENT 
+impdp \"/ as sysdba\" \
+DIRECTORY=exp_schemas \
+DUMPFILE= B1_01.dmp, B1_02.dmp,  B1_03.dmp,  B1_04.dmp \
+LOGFILE= B1.log \
+SCHEMAS= B1 \
+PARALLEL=4
+
+--Important NOTE : system/object privileges not included with dumps, so save them from Toad and run it after import
+
