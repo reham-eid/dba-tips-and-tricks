@@ -81,5 +81,8 @@ LOGFILE= B1.log \
 SCHEMAS= B1 \
 PARALLEL=4
 
---Important NOTE : system/object privileges not included with dumps, so save them from Toad and run it after import
+--Important NOTE : 
+-- 1) system/object privileges not included with dumps, so save them from Toad and run it after import
+-- 2) allways monitor trace file in $ORACLE_BASE/diag/rdbms/.../trace/alert.log 
+-- 3) kill session of data pump worker processes ( DW00 / DM00 ) if needs 
 
