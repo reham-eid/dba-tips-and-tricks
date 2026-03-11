@@ -114,7 +114,7 @@ COLUMN owner FORMAT A10
 COLUMN table_name FORMAT A30
 COLUMN index_name FORMAT A30
 COLUMN index_type FORMAT A15
-spool bilddd_user_indexes.txt
+spool bild_user_indexes.txt
 
 SELECT owner,table_name,index_name
 FROM dba_indexes
