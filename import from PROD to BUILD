@@ -73,6 +73,12 @@ exec DBMS_STATS.GATHER_SCHEMA_STATS('B1', method_opt => 'FOR ALL COLUMNS SIZE 1'
 --Ask for DOWNTIME before this
 DROP USER B1 CASCADE;
 
+--check for each schema and compare before and after import
+SELECT object_name, object_type  
+FROM dba_objects  
+WHERE owner='B1'  
+AND status='INVALID'; 
+
 --IMPORT STATMENT 
 impdp \"/ as sysdba\" \
 DIRECTORY=exp_schemas \
@@ -82,7 +88,66 @@ SCHEMAS= B1 \
 PARALLEL=4
 
 --Important NOTE : 
--- 1) system/object privileges not included with dumps, so save them from Toad and run it after import
+-- 1) system/object privileges not included with dumps, so save them (in a file) from Toad and run it after import
 -- 2) allways monitor trace file in $ORACLE_BASE/diag/rdbms/.../trace/alert.log 
--- 3) kill session of data pump worker processes ( DW00 / DM00 ) if needs 
+-- 3) kill data pump worker processes ( DW00 / DM00 ) if needs 
+
+--in my case 
+i got ORA error while import a large schema 
+ORA-00312 + ORA-27037 beacause the lack of space in /u03/FRA -> so i move some old archive logs in cloud storage , also ask starage admin for 100GB in /u03
+
+--at the next day
+--After /u03 increase 
+--i started import steps again for that large schema and finish succeccfully
+--then i checked again and i notice that 
+-- i have less objects in bild than prod in specific schema (the large one)
+--so, my idea was to compare between objects in bild & prod
+-- i have 2-ways : manually , by linux command 'diff'
+
+--first generate files of query result in both bild & prod
+SET LINESIZE 120
+SET PAGESIZE 50000
+SET FEEDBACK OFF
+SET TRIMSPOOL ON
+SET COLSEP '|'   
+COLUMN owner FORMAT A10
+COLUMN table_name FORMAT A30
+COLUMN index_name FORMAT A30
+COLUMN index_type FORMAT A15
+spool bilddd_user_indexes.txt
+
+SELECT owner,table_name,index_name
+FROM dba_indexes
+WHERE owner='B1'
+AND generated='N'
+AND index_name NOT LIKE 'SYS_%'
+ORDER BY table_name,index_name;
+
+spool off
+
+
+diff --suppress-common-lines -y prod_user_indexes.txt bild_user_indexes.txt
+
+--If you want to douple-check after this in sql-developer/toad filter these index_name in bild
+--if they not exist in bild , we need to create it -> so prod be as bild
+SET LONG 100000
+SET PAGESIZE 0
+SET LINESIZE 200
+SET LONGCHUNKSIZE 100000
+
+SELECT dbms_metadata.get_ddl('INDEX','PK_111','B1')
+FROM dual;
+--Then take output & create it
+
+--now recomplie he invalid objects & check
+@?/rdbms/admin/utlrp.sql
+
+--check for each schema and compare before and after import
+SELECT object_name, object_type  
+FROM dba_objects  
+WHERE owner='B1'  
+AND status='INVALID'; 
+
+
+
 
