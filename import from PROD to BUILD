@@ -127,6 +127,9 @@ spool off
 
 
 diff --suppress-common-lines -y prod_user_indexes.txt bild_user_indexes.txt
+--OUTPUT like:
+C_KEY_INDEX
+RP_KEY_INDEX
 
 --If you want to douple-check after this in sql-developer/toad filter these index_name in bild
 --if they not exist in bild , we need to create it -> so prod be as bild
