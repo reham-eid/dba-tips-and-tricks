@@ -1,0 +1,67 @@
+2026-03-14T10:49:43.215569+02:00
+
+KQR row cache contention check: gets 1000000 slps 5482 limit 5000
+KQR row cache hash chain marked hot: cid 7 hash 1cc87b7c
+KQR: cid 10 bucket 31612 marked HOT (mutex sleeps > limit)
+KQR (Kernel Query Row Cache)
+
+KQR is the manager of the Row Cache in Oracle Database.
+
+The Row Cache is part of the Shared Pool and stores Data Dictionary metadata, such as:
+Users
+Tables
+Privileges
+Objects
+Synonyms
+
+Oracle keeps this metadata in the Row Cache instead of going to the SYSTEM tables every time.
+This makes dictionary lookups much faster.
+
+Understanding the log message
+gets = 1000000   ->  This means Oracle tried to access the Row Cache one million times.
+slps = 5482      ->  This means there were 5482 mutex sleeps.
+A mutex sleep happens when a session tries to access the cache but another session is holding the mutex, so it must wait.
+
+limit = 5000     ->  This is the threshold for sleeps.
+When the number of sleeps exceeds this limit, Oracle considers the hash bucket hot.
+
+In our case
+5482 > 5000
+
+So there is contention on the Row Cache.
+
+That is why Oracle reports:
+row cache hash chain marked HOT
+Meaning many sessions are competing for the same dictionary cache entry.
+
+How to investigate
+--Check Row Cache activity:
+SELECT parameter,
+       gets,
+       getmisses,
+       modifications
+FROM v$rowcache
+ORDER BY getmisses DESC;
+
+This shows which dictionary cache entries are experiencing the most misses.
+
+--Check mutex sleeps:
+SELECT *
+FROM v$mutex_sleep;
+
+This helps identify where mutex contention is happening.
+
+--Check SQL statements with heavy parsing:
+SELECT sql_id,
+       parse_calls,
+       executions
+FROM v$sqlarea
+ORDER BY parse_calls DESC;
+
+High parse calls may cause heavy data dictionary lookups, which increases Row Cache contention.
+
+Typical reasons for this issue:
+Too many hard parses
+Applications constantly querying dictionary objects
+Frequent DDL operations
+Shared Pool pressure
