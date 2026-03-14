@@ -1,0 +1,117 @@
+ORA-01555: snapshot too old
+
+This error is very important in Oracle Database because it is directly related to Read Consistency and how Undo Segments work silently in the background.
+
+The main idea of this error is simple:
+Oracle tries to protect Read Consistency… but the required old data is no longer available in the Undo tablespace.
+
+What happens in ORA-01555?
+Sometimes sessions start to fight with each other 😆
+
+Let’s see a simple scenario.
+
+Session 1   -> Runs a large query to read data from a table.
+
+SELECT * FROM employees;
+Time started → 10:00
+
+Session 2  -> Runs a DML statement on the same table.
+
+UPDATE employees
+SET salary = salary + 1000
+WHERE employee_id = 10;
+
+Time → 10:10
+
+Before updating the row, Oracle saves the old version of the data in the Undo Tablespace.
+
+Why does Oracle save old data?
+Because of a concept called Read Consistency.
+Oracle guarantees that:
+A query always sees the data as it was when the query started.
+
+So even if Session_2 updates the data, Session_1 must still see the old version.
+
+Example timeline
+Time	              Action
+10:00      	Session_1 starts query
+10:10	      Session_2 updates rows
+10:10	      Old data stored in Undo
+10:20	      Session_1 finishes query
+
+Even though updates happened at 10:10, Session_1 should still see the data as it was at 10:00.
+Oracle retrieves the old version of the rows from the Undo Tablespace.
+
+Undo is used for:
+Rollback
+Read Consistency
+Flashback features
+
+So where is the problem?
+Both sessions are using the Undo Tablespace.
+
+Session_1
+→ needs the old data
+
+Session_2 (and other sessions)
+→ keep writing new undo data
+
+If the Undo Tablespace is small, Oracle may need space.
+So it will overwrite older undo blocks.
+
+When this happens
+Session_1 still needs the old version of the row.
+But Oracle already overwrote it in the Undo Tablespace.
+
+So Oracle cannot reconstruct the snapshot of the data at 10:00 anymore.
+Then the query fails with:
+
+ORA-01555: snapshot too old
+Main causes
+
+1️⃣ Undo tablespace too small
+High transaction activity fills the Undo quickly.
+
+2️⃣ Long-running queries
+The longer the query runs, the more chance the undo data will be overwritten.
+
+3️⃣ High DML activity
+Many updates/deletes generate large amounts of undo.
+
+There is also an important parameter:
+
+UNDO_RETENTION
+This parameter tells Oracle how long it should try to keep undo data before overwriting it.
+
+Example:
+UNDO_RETENTION = 3600
+
+Meaning:
+Oracle tries to keep undo data for 1 hour.
+
+But remember:
+If the Undo tablespace becomes full, Oracle may still overwrite the undo earlier.
+
+Simple rule for DBAs to reduce ORA-01555:
+
+Increase Undo Tablespace size
+Tune long queries
+Monitor UNDO_RETENTION
+Reduce unnecessary large transactions
+
+====================================
+=========BUT Think First🤔=========
+====================================
+
+you import the schema
+then allow the application to access the database immediately
+
+in this case, this error may appear:
+ORA-01555 Snapshot Too Old
+
+why?
+because some queries from the application may try to read old versions of data
+while the Undo Tablespace may not contain the required undo records yet
+or the undo data may not exist at all after the import operation.
+so Oracle cannot reconstruct the consistent snapshot of the data
+and the query may fail with snapshot too old.
