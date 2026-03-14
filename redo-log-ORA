@@ -1,0 +1,35 @@
+ORA-00313: open failed for members of log group string 
+ORA-00312: online log string thread string: 'string' 
+ORA-27037: unable to obtain file status 
+
+-> the file not in the OS 
+-> permission issues 
+-> disk unmount 
+
+ORA-00313 / 00312 / 27037 happens after a Clone:
+When you clone a database (via RMAN duplicate, Data Pump, or manual copy), the controlfiles in the cloned database may still reference the redo log paths of the source database.
+
+Example
+Source DB redo log paths:
+Redo Log  	Path
+redo01.log	/u01/app/oracle/oradata/ORCL/redo01.log
+redo02.log	/u01/app/oracle/oradata/ORCL/redo02.log
+
+After cloning, if the server paths differ or don’t exist:
+Oracle tries to open /u01/app/oracle/oradata/ORCL/redo01.log
+Path may not exist → ORA-27037 (unable to obtain file status)
+Oracle fails to open redo log → ORA-00313
+ORA-00312 shows which redo log file / thread caused the problem
+
+FIX: 
+
+SELECT group#, status 
+FROM v$log;  
+--it shows CURRENT log, INACTIVE
+
+SELECT group#, member FROM v$logfile; 
+
+--you can drop  INACTIVE and refer to uncorrected path 
+ALTER DATABASE DROP LOGFILE GROUP 7; 
+ALTER DATABASE DROP LOGFILE GROUP 8; 
+ALTER DATABASE DROP LOGFILE GROUP 9; 
