@@ -1,0 +1,83 @@
+#########################Add privileges to user with maintain its priveleges#########################
+
+user: APP
+SCHEMAS: S1 & G1
+ 
+PRIV: SELECT 
+OBJECTS: TABLES ONLY
+
+ENV: PROD
+
+*********************************************FOR BOTH SCHEMAS******************************************************
+--check if shcemas exisit  
+SELECT username 
+FROM dba_users 
+WHERE username = 'S1'; 
+
+-- Check existing privileges
+SELECT grantee,
+       owner,
+       table_name,
+       privilege
+FROM   dba_tab_privs
+WHERE  grantee = 'APP'
+AND    owner IN ('G1', 'S1')
+ORDER BY owner, table_name;
+--OR 
+SELECT 
+    'GRANT SELECT ON ' || owner || '.' || table_name || ' TO APP;'
+FROM 
+    dba_tables t
+WHERE 
+    owner = 'G1'   -- Target schema (tables owner)
+-- Check that the user APP already has SELECT privilege
+AND EXISTS (
+    SELECT 1
+    FROM dba_tab_privs p
+    WHERE 
+        p.grantee = 'APP'              -- Target user
+        AND p.owner = t.owner          -- Same schema
+        AND p.table_name = t.table_name  -- Same table
+);
+
+
+-- Generate GRANT SELECT statements for missing privileges only
+SELECT 
+    'GRANT SELECT ON ' || owner || '.' || table_name || ' TO APP;'
+FROM 
+    dba_tables t
+WHERE 
+    owner = 'S1'   -- Target schema (tables owner)
+
+-- Check that the user APP does NOT already have SELECT privilege
+AND NOT EXISTS (
+    SELECT 1
+    FROM dba_tab_privs p
+    WHERE 
+        p.grantee = 'APP'              -- Target user
+        AND p.owner = t.owner         -- Same schema
+        AND p.table_name = t.table_name  -- Same table
+        AND p.privilege = 'SELECT'    -- Check SELECT privilege only
+);
+
+-- Result:
+-- This query does NOT execute the grants.
+-- It only generates GRANT statements for tables
+-- where APP is missing SELECT privilege.
+
+-- Safe behavior:
+-- - Existing privileges are NOT affected
+-- - No duplicate grants
+-- - Can be executed multiple times safely (idempotent) 
+
+--Verify: After adding privileges, if there is no output -> ok✅
+
+-- Verify privileges added
+SELECT grantee,
+       owner,
+       table_name,
+       privilege
+FROM   dba_tab_privs
+WHERE  grantee = 'APP'
+AND    owner IN ('G1', 'S1')
+ORDER BY owner, table_name;
