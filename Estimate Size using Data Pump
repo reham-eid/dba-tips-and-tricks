@@ -1,4 +1,4 @@
-####### 📄 Data Pump Export – Estimate Size #######
+################################################# 📄 Data Pump Export – Estimate Size #################################################
 --We use Data Pump to estimate the size of an export **before actually running it**.
 --This helps us know how much disk space we need 
 
@@ -13,20 +13,23 @@ CREATE OR REPLACE DIRECTORY dp_estimate_size_dir AS '/u01/dumps';
 -- use system user if you want to estimate the wholr DB
 GRANT READ, WRITE ON DIRECTORY dp_estimate_size_dir TO system;
 
-*** 📊 Step 3: Estimate (Default)*** 
---Basic way to estimate export size
-expdp "/ as sysdba" full=y estimate_only=y directory=dp_estimate_size_dir logfile=estimate_full.log
+*** 📊 Step 3: Estimate the size ***
+-- we have 2-methods -> BLOCKS method 📦
+                     -> STATISTICS method 📈
 
-***  📦 other way: Estimate Using BLOCKS *** 
+*** the defult is blocks method ***
+expdp "/ as sysdba" full=y estimate_only=y directory=dp_estimate_size_dir logfile=estimate_full.log
+--the output will be like -> Total estimation using BLOCKS method: 107.6 GB 
+
+*** Estimate Using BLOCKS *** 
 --More accurate (based on actual data blocks)
 expdp "/ as sysdba" full=y estimate=blocks estimate_only=y directory=dp_estimate_size_dir logfile=estimate_blocks.log
 
-***  📈 Step 5: Estimate Using STATISTICS *** 
+*** Estimate Using STATISTICS *** 
 --Faster but less accurate (based on statistics)
-
 expdp "/ as sysdba" full=y estimate=statistics estimate_only=y directory=dp_estimate_size_dir logfile=estimate_statistics.log
 
-***  ⚖️ Differences *** 
+*** ⚖️ Differences *** 
 * estimate=blocks ➝ more accurate 👍 but slower
 * estimate=statistics ➝ faster ⚡ but less accurate
 * default ➝ balanced option
