@@ -1,0 +1,52 @@
+the case is :
+--After cloning from PROD to BIULD
+--We want to return schemas and their old data
+--We have a full backup for BUILD on shared storage 
+--The idea is to make a temporary environmet (VM copy from BILD) to put the backup on it
+--Restore VM machine by System admin 
+--Ensure that the Oracle environment variables (ORACLE_HOME, ORACLE_SID, etc.) are correctly set up 
+echo $ORACLE_HOME
+echo $ORACLE_SID
+--Verify that the same version of Oracle Database is installed 
+--Copy the spfile, pfile, and controlfile to their respective directories, if they are not already there 
+
+scp -r /mnt/or-bk/PROD oracle@target:/mnt/or-bk/PROD 
+
+--Ensure the password file exists                                                     >>>>> $ORACLE_HOME/dbs 
+
+--see data of any table to verify 
+ sqlplus / as sysdba
+SELECT OWNER, TABLE_NAME, TABLESPACE_NAME FROM DBA_TABLES WHERE OWNER='GENERAL';
+SELECT * from GENERAL.DEPARTMENTS;
+--or
+SELECT count(*)  from GENERAL.DEPARTMENTS;
+
+--Drop DB
+shutdown immidiate ;
+startup mount ;
+ALTER SYSTEM ENABLE RESTRICTED SESSION;
+drop database;
+
+ STARTUP NOMOUNT PFILE='/path/to/init<SID>.ora';                  >>>>> Restore with pfile 
+STARTUP NOMOUNT PFILE='/u01/app/oracle/product/19.0.0/db_home/dbs/initMUSTTEST.ora';
+
+-- Register backup pieces so RMAN can see them
+CATALOG START WITH '/mnt/or-bk/PROD';
+
+
+ RESTORE CONTROLFILE FROM '/path/to/backup/controlfile.ctl'; 
+
+ALTER DATABASE MOUNT; 
+
+-- Restore all datafiles from backup
+RESTORE DATABASE;
+
+-- Apply archived redo logs to make database consistent
+RECOVER DATABASE; 
+
+-- Open database after recovery
+ALTER DATABASE OPEN RESETLOGS; 
+
+--verify data
+ sqlplus / as sysdba
+sho con_name
