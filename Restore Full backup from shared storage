@@ -22,31 +22,135 @@ SELECT * from GENERAL.DEPARTMENTS;
 SELECT count(*)  from GENERAL.DEPARTMENTS;
 
 --Drop DB
+dbca
+--this will delete all the files related to DB service
+like - $ORACLE_HOME/network/admin/listener.ora , tnsnames.ora , datafiles, online redo logs
+
+--BUT this way -> you should delete manually cause not all files deleted
 shutdown immidiate ;
 startup mount ;
 ALTER SYSTEM ENABLE RESTRICTED SESSION;
 drop database;
 
- STARTUP NOMOUNT PFILE='/path/to/init<SID>.ora';                  >>>>> Restore with pfile 
+
+--verify the oradata & fra folders is deleted 
+cd /u03/FRA/ 
+rm -rf * 
+
+STARTUP NOMOUNT PFILE='/path/to/init<SID>.ora';                  >>>>> Restore with pfile 
 STARTUP NOMOUNT PFILE='/u01/app/oracle/product/19.0.0/db_home/dbs/initMUSTTEST.ora';
 
+rman target / 
+RESTORE CONTROLFILE FROM '/mnt/BILD/Requested Backups_copied/2026-02-20-02-00-01/ControlFile_BILD.ctl'; 
 -- Register backup pieces so RMAN can see them
-CATALOG START WITH '/mnt/or-bk/PROD';
-
-
- RESTORE CONTROLFILE FROM '/path/to/backup/controlfile.ctl'; 
-
+CATALOG START WITH '/mnt/BILD/Requested Backups_copied/2026-02-20-02-00-01'; 
 ALTER DATABASE MOUNT; 
 
 -- Restore all datafiles from backup
 RESTORE DATABASE;
 
+--BEFORE RECOVER
+--check if the online redo log groups created 
+COLUMN group#     FORMAT 999999
+COLUMN thread#    FORMAT 999999
+COLUMN sequence#  FORMAT 999999999
+COLUMN size_mb    FORMAT 999999
+COLUMN members    FORMAT 999999
+COLUMN status     FORMAT A15
+COLUMN member     FORMAT A80
+
+SELECT 
+    l.group#,
+    l.thread#,
+    l.sequence#,
+    ROUND(l.bytes/1024/1024) AS size_mb,
+    l.members,
+    l.status,
+    lf.member
+FROM 
+    v$log l
+JOIN 
+    v$logfile lf
+ON 
+    l.group# = lf.group#
+ORDER BY 
+    l.group#;
+--see -> INACTIVE logs and it's ok
 -- Apply archived redo logs to make database consistent
-RECOVER DATABASE; 
+
+RECOVER DATABASE; --archive logs now in /u03/FRA
 
 -- Open database after recovery
-ALTER DATABASE OPEN RESETLOGS; 
+ALTER DATABASE OPEN RESETLOG;  -- now onlinelog and autobackup folders in /u03/FRA/BILD/
+
+--AFTER RECOVER
+--check if the online redo log groups created 
+COLUMN group#     FORMAT 999999
+COLUMN thread#    FORMAT 999999
+COLUMN sequence#  FORMAT 999999999
+COLUMN size_mb    FORMAT 999999
+COLUMN members    FORMAT 999999
+COLUMN status     FORMAT A15
+COLUMN member     FORMAT A80
+
+SELECT 
+    l.group#,
+    l.thread#,
+    l.sequence#,
+    ROUND(l.bytes/1024/1024) AS size_mb,
+    l.members,
+    l.status,
+    lf.member
+FROM 
+    v$log l
+JOIN 
+    v$logfile lf
+ON 
+    l.group# = lf.group#
+ORDER BY 
+    l.group#;
 
 --verify data
  sqlplus / as sysdba
 sho con_name
+
+--------EXPORT GR table from temporary VM---------
+--on shared storage 
+mkdir -p /mnt/BILD/exports/GR_dp_exp_dir 
+chmod -R 775 /mnt/BILD/exports/GR_dp_exp_dir 
+chown -R oracle:dba /mnt/BILD/exports/GR_dp_exp_dir 
+
+SELECT directory_name, directory_path  
+FROM dba_directories  
+WHERE directory_name = 'GR_DP_EXP_DIR'; 
+
+CREATE OR REPLACE DIRECTORY GR_dp_exp_dir AS '/mnt/BILD/exports/GR_dp_exp_dir'; 
+GRANT READ, WRITE ON DIRECTORY GR_dp_exp_dir TO system;  
+
+expdp \"/ as sysdba\" \ 
+tables=G1.GR \ 
+directory=GR_dp_exp_dir \ 
+dumpfile=GR.dmp \ 
+logfile=GR.log \ 
+parallel=2 \ 
+compression=all 
+
+--------IMPORT GR table to BILD VM---------- 
+
+chmod -R 775 /mnt/BILD/exports/GR_dp_exp_dir 
+chown -R oracle:dba /mnt/BILD/exports/GR_dp_exp_dir 
+
+SELECT directory_name, directory_path  
+FROM dba_directories  
+WHERE directory_name = 'GR_DP_EXP_DIR'; 
+
+CREATE OR REPLACE DIRECTORY GR_dp_exp_dir AS '/mnt/BILD/exports/GR_dp_exp_dir'; 
+GRANT READ, WRITE ON DIRECTORY GR_dp_exp_dir TO system; 
+
+impdp \"/ as sysdba\" \ DIRECTORY=GR_dp_exp_dir DUMPFILE=GR.dmp LOGFILE=GR.log TABLE_EXISTS_ACTION=REPLACE  
+
+SELECT owner, object_name, object_type, status 
+FROM dba_objects 
+WHERE status='INVALID'; 
+
+@?/rdbms/admin/utlrp.sql 
