@@ -1,0 +1,42 @@
+Account Lock Investigation 
+
+--Account Status
+select username, account_status from dba_users where account_status like '%LOCKED%';
+select username, account_status from dba_users where account_status like '%EXPIRED%';
+
+
+If user account is in LOCKED(TIMED) status due to multiple failed login attempts.
+
+--Common Return Codes:
+
+Return Code	   >>        Description
+0	             >>     Login Successful
+1017	         >>   Invalid Username/Password
+28000          >>     	Account Locked
+
+--Audit Query – All Failed Login Attempts
+SELECT event_timestamp,
+       dbusername,
+       userhost,
+       return_code
+FROM unified_audit_trail
+WHERE return_code <> 0
+  AND dbusername = 'B1'
+ORDER BY event_timestamp DESC;
+
+
+--Audit Query – Failed Login Attempts Within a Specific Time Range
+SELECT *
+FROM unified_audit_trail
+WHERE dbusername = 'B1'
+  AND event_timestamp >= TIMESTAMP '2026-06-10 00:00:00'
+  AND event_timestamp <  TIMESTAMP '2026-06-11 12:00:00'
+ORDER BY event_timestamp DESC;
+
+Findings:
+The account entered LOCKED(TIMED) status after exceeding the allowed number of failed login attempts defined in the user's profile.
+
+Audit records can be reviewed in UNIFIED_AUDIT_TRAIL to identify:
+->Failed login timestamps
+->Source host (USERHOST)
+->Return codes associated with each login attempt
