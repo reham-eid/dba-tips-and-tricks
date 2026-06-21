@@ -1,0 +1,134 @@
+================================================Queries================================================
+--Check Locked and Expired Users 
+SELECT username, 
+       account_status 
+FROM dba_users 
+WHERE account_status LIKE '%LOCKED%'; 
+
+SELECT username, 
+       account_status 
+FROM dba_users 
+WHERE account_status LIKE '%EXPIRED%'; 
+
+--Check Online Redo Logs 
+SELECT group#, 
+       status 
+FROM v$log; 
+
+--Check Redo Log Members 
+SELECT group#, 
+       type, 
+       member 
+FROM v$logfile 
+ORDER BY group#; 
+
+--Check Online Redo Log Size 
+SELECT group#, 
+       status, 
+       bytes/1024/1024 AS size_mb 
+FROM v$log 
+ORDER BY group#; 
+
+--Check Standby Redo Logs 
+SELECT group#, 
+       status, 
+       bytes/1024/1024 AS size_mb 
+FROM v$standby_log 
+ORDER BY group#; 
+
+--Check Invalid Objects 
+SELECT object_name, 
+       object_type 
+FROM dba_objects 
+WHERE status = 'INVALID'; 
+
+ --Num of schema 
+SELECT COUNT(*) AS schema_count 
+FROM dba_users; 
+
+--Num of tables 
+SELECT COUNT(*) AS table_count 
+FROM dba_tables; 
+
+--Num of indexs 
+SELECT COUNT(*) AS index_count 
+FROM dba_indexes; 
+
+--DB size  
+-- Database Capacity Report: Displays database size, used/free space, and utilization percentage. 
+-- Includes estimated daily and weekly growth based on the current database size and database age. 
+SELECT  
+(select min(creation_time) from v$datafile) "Create Time",  
+(select name from v$database) "Database Name",  
+ROUND((SUM(USED.BYTES) / 1024 / 1024 / 1024 ),2) || ' GB' "Database Size", 
+ROUND((SUM(USED.BYTES) / 1024 / 1024 / 1024 ) - ROUND(FREE.P / 1024 / 1024 / 1024 ),2) || ' GB' "Used Space",  
+ROUND(((SUM(USED.BYTES) / 1024 / 1024 ) - (FREE.P / 1024 / 1024 )) / ROUND(SUM(USED.BYTES) / 1024 / 1024 ,2)*100,2) || '% MB' "Used in %",  
+ROUND((FREE.P / 1024 / 1024 / 1024 ),2) || ' GB' "Free Space",  
+ROUND(((SUM(USED.BYTES) / 1024 / 1024 ) - ((SUM(USED.BYTES) / 1024 / 1024 ) - ROUND(FREE.P / 1024 / 1024 )))/ROUND(SUM(USED.BYTES) / 1024 / 1024,2 )*100,2) || '% MB' "Free in %",  
+ROUND(((SUM(USED.BYTES) / 1024 / 1024 ) - (FREE.P / 1024 / 1024 ))/(select sysdate-min(creation_time) from v$datafile),2) || ' MB' "Growth DAY",  
+ROUND(((SUM(USED.BYTES) / 1024 / 1024 ) - (FREE.P / 1024 / 1024 ))/(select sysdate-min(creation_time) from v$datafile)/ROUND((SUM(USED.BYTES) / 1024 / 1024 ),2)*100,3) || '% MB' "Growth DAY in %",  
+ROUND(((SUM(USED.BYTES) / 1024 / 1024 ) - (FREE.P / 1024 / 1024 ))/(select sysdate-min(creation_time) from v$datafile)*7,2) || ' MB' "Growth WEEK",  
+ROUND((((SUM(USED.BYTES) / 1024 / 1024 ) - (FREE.P / 1024 / 1024 ))/(select sysdate-min(creation_time) from v$datafile)/ROUND((SUM(USED.BYTES) / 1024 / 1024 ),2)*100)*7,3) || '% MB' "Growth WEEK in %"  
+FROM (SELECT BYTES FROM V$DATAFILE  
+UNION ALL  
+SELECT BYTES FROM V$TEMPFILE  
+UNION ALL  
+SELECT BYTES FROM V$LOG) USED,  
+(SELECT SUM(BYTES) AS P FROM DBA_FREE_SPACE) FREE  
+GROUP BY FREE.P;  
+
+--Backup size  
+SELECT DISTINCT 
+       bp.handle, 
+       bs.completion_time 
+FROM v$backup_piece bp 
+JOIN v$backup_set bs 
+  ON bp.set_stamp = bs.set_stamp 
+AND bp.set_count = bs.set_count 
+ORDER BY bs.completion_time DESC; 
+--take the last FULL-BACKUP 
+/* 
+cd /mnt/or-bk-dev/TEST/ 
+ll 2025-12-26-02-00-01 
+--ensure that full backup completed with (ControlFile, pfileTEST.ora, spfileTEST.ora)
+cd 2025-12-26-02-00-01 
+du -h .
+*/ 
+================================================FROM OEM================================================
+--Check Blocking Sessions 
+Navigate through OEM: 
+Performance-> Blocking Sessions 
+Verify whether any session is blocking other active sessions. 
+
+--Check Running Scheduler Jobs and Their Status 
+Navigate through OEM: 
+Administration-> 
+Scheduler-> Jobs 
+Review: 
+Running Jobs 
+Job Status 
+Last Run Time 
+Next Run Time 
+Failed Jobs 
+
+--Check Top Sessions Consuming Physical I/O 
+Navigate through OEM: 
+Performance Hub-> ASH Analytics-> Top 100 By 
+Select: 
+Physical Reads 
+User I/O 
+Identify sessions generating excessive disk reads. 
+
+--Check Tablespace Utilization 
+Navigate through OEM: 
+Administration-> Storage-> Tablespaces 
+Review: 
+Tablespace Usage (%) 
+Free Space 
+Autoextend Status 
+Datafile Growth 
+Tablespace Status 
+
+Monitor tablespaces approaching capacity limits. 
+
+ 
