@@ -1,0 +1,67 @@
+steps before script of Export Full DB:
+
+mkdir -p /u02/exports/Full_DB
+chown oracle:oinstall /u02/exports/Full_DB 
+chmod 775 /u02/exports/Full_DB
+
+CREATE OR REPLACE DIRECTORY FULL_DB_DIR AS '/u02/exports/Full_DB/'; 
+GRANT READ, WRITE ON DIRECTORY FULL_DB_DIR TO SYSTEM; 
+
+
+===========================================script of Export Full DB===========================================
+#!/bin/bash
+
+# Oracle environment
+export ORACLE_HOME=$ORACLE_BASE/product/19.3.0/db_1
+export ORACLE_SID=TEST
+export PATH=$ORACLE_HOME/bin:$PATH
+
+# Date variable
+DATE=$(date +%Y%m%d)
+
+# Run Data Pump export
+expdp "' / as sysdba'" \
+  full=y \
+  directory=FULL_DB_DIR \
+  dumpfile=FULL_DB_${DATE}_%U.dmp \
+  logfile=FULL_DB_${DATE}.log \
+  parallel=4 \
+  compression=ALL \
+  content=ALL \
+
+===========================================script for specific schema===========================================
+#!/bin/bash
+
+# Oracle environment
+export ORACLE_BASE=/u01/app/oracle
+export ORACLE_HOME=$ORACLE_BASE/product/19.3.0/db_1
+export ORACLE_SID=TEST
+export PATH=$ORACLE_HOME/bin:$PATH
+
+# Date variable
+DATE=$(date +%Y%m%d)
+
+# Base export directory 
+BASE_DIR=/u02/exports 
+TARGET_DIR=${BASE_DIR}/B1_dp_exp_dir_${DATE} 
+
+# Create target folder 
+mkdir -p ${TARGET_DIR} 
+chmod 775 ${TARGET_DIR}
+
+# Run Data Pump export
+expdp "' / as sysdba'" \
+  schemas=B1 \
+  directory=B1_DP_EXP_DIR \
+  dumpfile=B1_${DATE}_%U.dmp \
+  logfile=B1_${DATE}.log \
+  parallel=4 \
+  compression=ALL \
+  content=ALL \
+
+# Move generated files to target folder 
+mv ${BASE_DIR}/B1_*.dmp ${TARGET_DIR}/
+mv ${BASE_DIR}/B1_${DATE}.log ${TARGET_DIR}/ 
+
+  
+----------
