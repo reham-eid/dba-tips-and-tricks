@@ -8,7 +8,7 @@ CREATE OR REPLACE DIRECTORY FULL_DB_DIR AS '/u02/exports/Full_DB/';
 GRANT READ, WRITE ON DIRECTORY FULL_DB_DIR TO SYSTEM; 
 
 
-===========================================script of Export Full DB===========================================
+===========================================script of Export Full DB exp_full_db.sh===========================================
 #!/bin/bash
 
 # Oracle environment
@@ -29,7 +29,7 @@ expdp "' / as sysdba'" \
   compression=ALL \
   content=ALL \
 
-===========================================script for specific schema===========================================
+===========================================script for specific schema exp_B1_db.sh===========================================
 #!/bin/bash
 
 # Oracle environment
@@ -65,3 +65,4 @@ mv ${BASE_DIR}/B1_${DATE}.log ${TARGET_DIR}/
 
   
 ----------
+DON'T FORGET: to give permission to script file -> chmod 755 filename
