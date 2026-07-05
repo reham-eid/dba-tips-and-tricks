@@ -12,6 +12,7 @@ GRANT READ, WRITE ON DIRECTORY FULL_DB_DIR TO SYSTEM;
 #!/bin/bash
 
 # Oracle environment
+export ORACLE_BASE=/u01/app/oracle
 export ORACLE_HOME=$ORACLE_BASE/product/19.3.0/db_1
 export ORACLE_SID=TEST
 export PATH=$ORACLE_HOME/bin:$PATH
@@ -65,4 +66,4 @@ mv ${BASE_DIR}/B1_${DATE}.log ${TARGET_DIR}/
 
   
 ----------
-DON'T FORGET: to give permission to script file -> chmod 755 filename
+DON'T FORGET: to give Execute permission to script file -> chmod 755 filename
