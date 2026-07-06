@@ -30,6 +30,23 @@ expdp "' / as sysdba'" \
   compression=ALL \
   content=ALL \
 
+
+*********Cases I Experienced During Full Data Pump Export************
+
+**ORA-29548:** Java system class reported: release of Java system classes in the database (19.0.0.0.211019 1.8) 
+does not match that of the Oracle executable (19.0.0.0.0 1.8).
+
+**Temporary Solution:**
+Add the following parameter to the `expdp` command:
+
+`EXCLUDE=JAVA_SOURCE,JAVA_CLASS`
+
+**Final Solution:**
+Patch both the Grid Infrastructure Home and the Oracle Home, 
+apply the OJVM patch, 
+then run `datapatch` to update the database SQL components (CATALOG, CATPROC, CATJAVA, CONTEXT, XDB, etc.), 
+synchronize the OJVM Java objects with the Oracle Home binaries, and complete the patch installation.
+
 ===========================================script for specific schema exp_B1_db.sh===========================================
 #!/bin/bash
 
