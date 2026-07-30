@@ -1,0 +1,183 @@
+                    Oracle Flashback
+                           │
+      ┌────────────────────┼─────────────────────┐
+      │                    │                     │
+      ▼                    ▼                     ▼
+   UNDO Tablespace     Recycle Bin      Flashback Logs (FRA)
+      │                    │                     │
+      │                    │                     │
+      ▼                    ▼                     ▼
+Flashback Query      Flashback Drop     Flashback Database
+Flashback Table
+Flashback Version Query
+Flashback Transaction Query
+
+Oracle Flashback Types and How to Enable Them: 
+
+| **Flashback Feature**           | **Requires Configuration?** | **Main Requirement**                                                     |
+| ------------------------------- | --------------------------- | ------------------------------------------------------------------------ |
+| **Flashback Query**             | No                          | Sufficient **UNDO**                                                      |
+| **Flashback Version Query**     | No                          | Sufficient **UNDO**                                                      |
+| **Flashback Transaction Query** | No                          | **UNDO** + **Supplemental Logging**                                      |
+| **Flashback Table**             | Yes                         | **Row Movement** enabled                                                 |
+| **Flashback Drop**              | No                          | **Recycle Bin** enabled                                                  |
+| **Flashback Database**          | Yes                         | **Fast Recovery Area (FRA)** configured + **Flashback Database** enabled |
+
+Flashback Factors
+
+Flashback operations require a reference point to determine when the database should be restored or queried.
+
+Oracle supports two reference points:
+
+1-SCN (System Change Number)
+A unique number generated for every committed transaction.
+Acts as Oracle's internal clock.
+More accurate than using timestamps.
+
+
+Example:
+
+SELECT CURRENT_SCN
+FROM V$DATABASE;
+
+Flashback using SCN:
+
+SELECT *
+FROM employees
+AS OF SCN 123456;
+
+
+2-Timestamp
+
+Instead of SCN, Oracle can use a timestamp.
+
+Example:
+
+SELECT *
+FROM employees
+AS OF TIMESTAMP
+(SYSTIMESTAMP - INTERVAL '10' MINUTE);
+
+Oracle internally converts the timestamp into the corresponding SCN.
+
+ NOTE:
+Oracle supports timestamps with precision up to 9 fractional digits (nanoseconds).
+Example         ->      2026-07-30 11:20:35.123456789
+Although Oracle stores timestamps with nanosecond precision, Flashback operations depend on transaction commit SCNs.
+
+-----------------------------------------------------------
+ Automatic Undo Management (AUM)
+
+Oracle uses Automatic Undo Management by default.
+
+SHOW PARAMETER undo_management;
+
+Oracle automatically manages:
+
+Undo Segments
+Undo Space
+Undo Reuse
+-----------------------------------------------------------
+Undo Tablespace
+
+Undo information is stored inside the Undo Tablespace.
+
+Check:
+
+SHOW PARAMETER undo_tablespace;
+
+Example:
+
+UNDOTBS1
+
+Undo is required for:
+
+Flashback Query
+Flashback Table
+Flashback Version Query
+Flashback Transaction Query
+Read Consistency
+Transaction Rollback
+-----------------------------------------------------------
+UNDO_RETENTION
+
+SHOW PARAMETER undo_retention;
+
+900
+
+Oracle attempts to retain undo information for 900 seconds (15 minutes).
+-----------------------------------------------------------
+RETENTION NOGUARANTEE (Default)
+
+By default, Oracle may overwrite old undo data before the retention period expires if the Undo Tablespace becomes full.
+
+Therefore, UNDO_RETENTION is only a target, not a guarantee.
+-----------------------------------------------------------
+RETENTION GUARANTEE
+
+ALTER TABLESPACE undotbs1
+RETENTION GUARANTEE;
+
+Oracle guarantees that undo data will be preserved for the specified retention period.
+
+If the Undo Tablespace becomes full, new DML operations may fail instead of overwriting existing undo.
+-----------------------------------------------------------
+Undo Advisor
+
+Oracle Enterprise Manager (OEM) provides Undo Advisor.
+in TOAD : Database -> Diagnose -> Undo Advisor(OEM)
+in oracle SQL Server -> automatic undo managment
+
+It helps DBAs:
+Estimate the required Undo Tablespace size.
+Recommend an appropriate UNDO_RETENTION value.
+Analyze undo usage.
+-----------------------------------------------------------
+Recycle Bin
+When a table is dropped:
+
+DROP TABLE employees;
+Oracle moves the table to the Recycle Bin instead of permanently deleting it.
+
+Recover the table:
+FLASHBACK TABLE employees TO BEFORE DROP;
+-----------------------------------------------------------
+Archive Logs store Redo information (database changes).
+
+They are used for:
+RMAN Recovery
+Media Recovery
+Complete Recovery
+
+Archive Logs do not store a complete image of the database.
+
+BUT 
+
+Flashback Logs store before-images of modified data blocks.
+They are created only when Flashback Database is enabled.
+
+Flashback Logs are stored in the: Fast Recovery Area (FRA)
+They are used only by Flashback Database
+
+
+
+| Archive Log                  | Flashback Log                                     |
+| ---------------------------- | ------------------------------------------------- |
+| Stores redo (changes made)   | Stores before-images of data blocks               |
+| Used by RMAN Recovery        | Used by Flashback Database                        |
+| Required for media recovery  | Required for rewinding the database               |
+| Generated in ARCHIVELOG mode | Generated only when Flashback Database is enabled |
+
+-----------------------------------------------------------
+Flashback Retention
+
+SHOW PARAMETER db_flashback_retention_target;
+1440
+
+Meaning:
+Oracle attempts to keep Flashback Logs for 1440 minutes (24 hours).
+Like UNDO_RETENTION, this is a target, not a guaranteed value.
+Actual retention depends on available FRA space.
+
+
+
