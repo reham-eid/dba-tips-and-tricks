@@ -1,0 +1,50 @@
+                    Oracle Flashback
+                           │
+      ┌────────────────────┼─────────────────────┐
+      │                    │                     │
+      ▼                    ▼                     ▼
+   UNDO Tablespace     Recycle Bin      Flashback Logs (FRA)
+      │                    │                     │
+      │                    │                     │
+      ▼                    ▼                     ▼
+Flashback Query      Flashback Drop     Flashback Database
+Flashback Table
+Flashback Version Query
+Flashback Transaction Query
+
+Oracle Flashback Types and How to Enable Them: 
+
+| **Flashback Feature**           | **Requires Configuration?** | **Main Requirement**                                                     |
+| ------------------------------- | --------------------------- | ------------------------------------------------------------------------ |
+| **Flashback Query**             | No                          | Sufficient **UNDO**                                                      |
+| **Flashback Version Query**     | No                          | Sufficient **UNDO**                                                      |
+| **Flashback Transaction Query** | No                          | **UNDO** + **Supplemental Logging**                                      |
+| **Flashback Table**             | Yes                         | **Row Movement** enabled                                                 |
+| **Flashback Drop**              | No                          | **Recycle Bin** enabled                                                  |
+| **Flashback Database**          | Yes                         | **Fast Recovery Area (FRA)** configured + **Flashback Database** enabled |
+
+
+
+
+| **Feature**               | **Flashback Drop**                               | **Flashback Table**                                 |
+| ------------------------- | ------------------------------------------------ | --------------------------------------------------- |
+| **Purpose**               | Recover a dropped table.                         | Restore a table to a previous point in time.        |
+| **Uses**                  | Recycle Bin                                      | UNDO Data                                           |
+| **Recovers**              | Deleted table                                    | Previous data within an existing table              |
+| **Database Object**       | Table was dropped.                               | Table still exists.                                 |
+| **Data Modification**     | Restores the dropped table from the Recycle Bin. | Restores the table contents to a past state.        |
+| **Requires Row Movement** | No                                               | Yes (`ALTER TABLE table_name ENABLE ROW MOVEMENT;`) |
+
+
+| **Feature**     | **Flashback Query**                   | **Flashback Transaction Query**                                  |
+| --------------- | ------------------------------------- | ---------------------------------------------------------------- |
+| **Purpose**     | Shows historical data                 | Shows transaction history                                        |
+| **Method**      | Uses `AS OF TIMESTAMP` or `AS OF SCN` | Uses `FLASHBACK_TRANSACTION_QUERY` view                          |
+| **Access Type** | Read-only                             | Read-only                                                        |
+| **Retrieves**   | Previous row values                   | Transaction metadata (Transaction ID, Operation, Undo SQL, etc.) |
+| **Uses**        | UNDO                                  | UNDO + Transaction Information (Supplemental Logging)            |
+| **Best For**    | Viewing previous data                 | Auditing and investigating transactions                          |
+
+
+
+
