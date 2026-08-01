@@ -1,0 +1,89 @@
+What is the Recycle Bin?
+The Recycle Bin is an Oracle feature that stores dropped objects (such as tables and their dependent objects) instead of permanently deleting them.
+It allows you to recover accidentally dropped tables without restoring the database from backup.
+Note: The Recycle Bin is enabled by default in Oracle Database.
+
+What actually happens?
+Suppose the table is stored in the USERS tablespace.
+
+Before dropping:
+
+USERS Tablespace
+----------------
+TEST_RB
+
+After:
+
+USERS Tablespace
+----------------
+BIN$abc123xyz==$0
+
+The data remains in the same tablespace.
+
+Oracle simply:
+1-changes the object name,
+2-marks it as dropped,
+3-stores information about it in the Recycle Bin.
+No data is moved to another tablespace.
+
+Does the Recycle Bin consume disk space? Yes.
+Since the datafiles are not deleted immediately, they continue to occupy space in the original tablespace.
+
+You can check the space used by recycle bin objects:
+
+SELECT original_name,
+       space,
+       can_undrop,
+       can_purge
+FROM recyclebin;
+
+ORIGINAL_NAME  SPACE CAN CAN
+----------     ----  --- ---
+T1              8    YES YES
+
+The SPACE column represents the number of Oracle blocks occupied by the dropped object.
+
+-Objects dropped with PURGE cannot be recovered using Flashback Drop.
+-Objects created by SYS are not stored in the Recycle Bin.
+-Oracle may automatically purge Recycle Bin objects when space is required in the tablespace.
+
+
+CREATE USER test IDENTIFIED BY test;
+GRANT CONNECT, RESOURCE TO test;
+GRANT UNLIMITED TABLESPACE TO test; 
+
+sqlplus test/test
+CREATE TABLE t1 (id NUMBER);
+INSERT INTO t1 VALUES (1);
+COMMIT;
+
+DROP TABLE t1;
+
+SHOW RECYCLEBIN; 
+
+FLASHBACK TABLE t1 TO BEFORE DROP;
+Flashback complete.
+
+SELECT * FROM t1;
+       ID
+----------
+         1
+
+
+====
+Permanently delete a table
+
+To bypass the Recycle Bin:
+DROP TABLE test_rb PURGE;
+The table is permanently removed and cannot be restored using Flashback Drop.
+
+--Empty the Recycle Bin
+
+Current user:
+PURGE RECYCLEBIN;
+
+DBA:
+PURGE DBA_RECYCLEBIN;
+
+Specific table:
+PURGE TABLE test_rb;
