@@ -1,0 +1,126 @@
+=============================================================================================
+
+## Recovery Scenario (DBID was not saved)
+
+Normally, it is recommended to save the **DBID** before starting a backup because it may be required during recovery, especially when restoring from an **autobackup**.
+However, if you forgot to save the DBID, you can still recover the database **if you know the control file backup piece**. 
+Once the control file is restored and the database is mounted, you can retrieve the DBID again.
+
+### Scenario (Test Environment)
+
+I created:
+
+* RMAN Backup
+* Control File Autobackup
+* Archive Logs
+
+Then I deleted the following from the filesystem:
+
+* `oradata`
+* `pfile`
+* `spfile`
+* `control files`
+
+Now I want to recover the database.
+
+### Recovery Steps
+
+```
+RESTORE CONTROLFILE
+        ↓
+MOUNT
+        ↓
+RESTORE DATABASE
+        ↓
+RECOVER DATABASE
+        ↓
+OPEN RESETLOGS
+```
+
+### 1. Create a temporary PFILE
+
+cd $ORACLE_HOME/dbs
+
+cat > initTEST.ora <<EOF
+db_name='TEST'
+EOF
+
+### 2. Start the instance in NOMOUNT
+
+sqlplus / as sysdba
+
+STARTUP NOMOUNT PFILE='$ORACLE_HOME/dbs/initTEST.ora';
+
+Verify that the instance is started:
+
+ps -ef | grep pmon
+
+SELECT status FROM v$instance;
+
+STATUS
+------------
+STARTED
+
+Check the control file location:
+
+SHOW PARAMETER control_files;
+
+control_files
+/u01/app/oracle/product/19.0.0/db_home/dbs/cntrlTEST.dbf
+
+### 3. Restore the Control File
+
+rman target /
+
+At this point the database is **not mounted** and the DBID is still unknown.
+
+RMAN> RESTORE CONTROLFILE FROM '/u01/app/oracle/fast_recovery_area/MUSTTEST/autobackup/2026_04_15/o1_mf_s_1230651628_nxz5bdov_.bkp';
+
+Expected output:
+output file name=/u01/app/oracle/product/19.0.0/db_home/dbs/cntrlMUSTTEST.dbf
+
+Finished restore
+
+### 4. Mount the database
+
+RMAN> ALTER DATABASE MOUNT;
+
+### 5. Verify available backups
+RMAN> LIST BACKUP;
+
+### 6. Catalog the archived logs and backup files
+RMAN> CATALOG START WITH '/u01/app/oracle/fast_recovery_area/';
+
+YES
+
+### 7. Restore the database
+RMAN> RESTORE DATABASE;
+
+### 8. Recover the database
+RMAN> RECOVER DATABASE;
+
+### 9. Open the database
+RMAN> ALTER DATABASE OPEN RESETLOGS;
+
+### 10. Verify archived logs
+RMAN> LIST ARCHIVELOG ALL;
+---
+
+## After mounting the database
+
+Now RMAN can identify the database and displays the DBID:
+connected to target database: TEST (DBID=2925958055)
+
+You can also verify it from SQL*Plus:
+
+SELECT DBID FROM V$DATABASE;
+
+      DBID
+----------
+2925958055
+```
+
+**Save the DBID** for future recovery operations. 
+It will make disaster recovery much easier, especially when restoring from an RMAN autobackup without knowing the backup piece name.
+
+
