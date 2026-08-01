@@ -1,5 +1,5 @@
 #/bin/sh
-ORACLE_SID=OTDS
+ORACLE_SID=DB1
 export ORACLE_SID
 ORACLE_BASE=/u01/app/oracle
 export ORACLE_BASE
