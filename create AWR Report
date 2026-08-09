@@ -1,0 +1,36 @@
+
+-- Check the AWR configuration
+SELECT dbid,
+       snap_interval,
+       retention
+FROM dba_hist_wr_control;
+--2717112233	+00000 01:00:00.0	+00008 00:00:00.0
+
+-- Display all available AWR snapshots with their start and end times
+SELECT snap_id,
+       begin_interval_time,
+       end_interval_time
+FROM dba_hist_snapshot
+ORDER BY begin_interval_time DESC;
+--I want a snapshot of what happened from 10AM till 11AM 
+--8425       8/9/2026 10:00:12.163 AM    8/9/2026 11:00:26.884 AM  ->End Snap
+--8424	8/9/2026 9:00:57.923 AM	8/9/2026 10:00:12.163 AM           ->Begin Snap
+
+
+--Now create AWR Report
+sqlplus / as sysdba
+
+@?/rdbms/admin/awrrpt.sql
+
+
+
+html
+
+1
+
+8424
+8425
+
+awrrpt_10:00am-11:00am.html
+
+exit
