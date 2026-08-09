@@ -1,0 +1,170 @@
+What is SHMMAX?
+SHMMAX defines the maximum size of a single shared memory segment on Linux.
+
+Current value: kernel.shmmax = 21474836480 bytes > 20 GiB
+
+
+What is SHMALL?
+SHMALL defines the total amount of System V shared memory that can be allocated on the system, measured in memory pages.
+
+Current value: kernel.shmall = 5767168
+Check the normal Linux page size:
+getconf PAGE_SIZE --4096 bytes
+Therefore:
+5,767,168 × 4,096 bytes
+≈ 23.6 GB ≈ 22 GiB
+
+Important: SHMALL is expressed in pages, while ipcs -lm displays the total in KB.
+
+What is SHMMNI?
+SHMMNI defines the maximum number of System V shared memory segments/identifiers that can exist system-wide.
+
+SHMMAX → Maximum size of ONE segment
+SHMALL → Total shared memory
+SHMMNI → Maximum NUMBER of segments
+
+What are HugePages?
+HugePages are larger memory pages that can be used by Oracle to manage large SGA allocations more efficiently and reduce memory-management overhead.
+
+Normal Linux page:
+4 KB
+
+HugePage:
+2 MB
+
+
+What are Semaphores?
+Semaphores provide synchronization between processes when accessing shared resources.
+Think of them as a control mechanism that coordinates processes competing for shared resources.
+They are not memory size parameters like:
+SHMMAX
+SHMALL
+and they are not HugePages.
+
+Run this command: 
+ipcs -lm
+
+------ Shared Memory Limits --------
+
+max number of segments = 4096  --(Shared Memory Maximum Number of Identifiers) Number of Shared Memory Segments  at the level of OS
+
+max seg size (kbytes) = 20971520 =20GB --the biggest size of one Shared Memory Segment allowded in Linux 
+-> related to kernel.shmmax
+
+max total shared memory (kbytes) = 23068672 = 22GB
+-> related to kernel.shmmall
+
+getconf -a | grep PAGE_SIZE
+
+SHMALL = 5767168 -> in pages
+PAGE_SIZE = 4096 bytes
+calculate 
+5767168 × 4096
+≈ 23.6 GB
+
+-----
+HugePages
+
+████████
+████████
+
+grep -i Huge /proc/meminfo
+AnonHugePages:         0 kB
+ShmemHugePages:        0 kB
+FileHugePages:         0 kB
+HugePages_Total:    9218
+HugePages_Free:      522
+HugePages_Rsvd:      522
+HugePages_Surp:        0
+Hugepagesize:       2048 kB
+Hugetlb:        18878464 kB
+
+>
+Each HugePage = 2 MB
+
+-HugePages_Total
+-HugePages_Total = 9218
+
+Total HugePages configured:
+
+9218 × 2 MB
+= 18,436 MB
+≈ 18 GiB
+
+So approximately:
+18 GiB of memory is allocated for HugePages.
+
+-HugePages_Free
+-HugePages_Free = 522
+
+Approximately:
+
+522 × 2 MB
+= 1044 MB
+≈ 1 GiB
+
+So approximately 1 GiB of the HugePages are currently free.
+
+
+---
+                 Linux Shared Memory
+                         │
+          ┌──────────────┼──────────────┐
+          │              │              │
+       SHMMAX          SHMALL         SHMMNI
+          │              │              │
+      Size of         Total          Number of
+     ONE segment     shared memory     segments
+
+              HugePages
+                  │
+        ┌─────────┴─────────┐
+        │                   │
+    HugePages_Total    Hugepagesize
+        │                   │
+    Number of pages       2 MB/page
+
+
+RAM                  = 47 GiB
+HugePages             ≈ 18 GiB
+HugePage size         = 2 MB
+SHMMAX                = 20 GiB
+SHMALL                ≈ 22 GiB
+SHMMNI                = 4096
+
+
+
+
+SELECT name,
+       ROUND(value/1024/1024,2) AS mb
+FROM v$pgastat
+WHERE name IN (
+    'total PGA allocated',
+    'total PGA inuse',
+    'maximum PGA allocated'
+);
+
+NAME                                                                     MB
+---------------------------------------------------------------- ----------
+total PGA inuse                                                      954.78
+total PGA allocated                                                 1801.17
+maximum PGA allocated                                               3019.42
+
+SELECT *
+FROM v$sga;
+
+NAME                      VALUE     CON_ID
+-------------------- ---------- ----------
+Fixed Size             13682384          0
+Variable Size        4026531840          0
+Database Buffers     1.5234E+10          0
+Redo Buffers           53424128          0
+
+
+
+SGA: 17G ──────────────► 32G
+             +15G
+
+2-backup PFILE & SPFILE
+cp /u01/app/oracle/product/19.0.0/db_1/dbs/initMUSTBILD.ora /u01/app/oracle/product/19.0.0/db_1/dbs/initBILD.ora-old
+
