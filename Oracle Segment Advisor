@@ -1,0 +1,46 @@
+Oracle Segment Advisor / Automatic Segment Advisor  
+
+SELECT recommendations, c1
+FROM TABLE(dbms_space.asa_recommendations);
+
+DBMS_SPACE = Oracle package that provides procedures and functions for analyzing and managing segment space.
+asa_recommendations = a Function inside DBMS_SPACE.
+ASA = Automatic Segment Advisor
+
+Oracle analyzes segments and provides recommendations, like:
+  -Segment can be shrunk
+  -Segment has unused space
+  -No recommendations
+These recommendations are provided by the Automatic Segment Advisor.
+
+============
+Automatic Segment Advisor:  
+
+Analyze
+   ↓
+Find wasted space
+   ↓
+Give recommendation
+   ↓
+DBA decides what to do
+
+============
+Query:
+
+DBMS_SPACE
+    │
+    ▼
+asa_recommendations()
+    │
+    ▼
+Collection
+    │
+    ▼
+TABLE()
+    │
+    ▼
+Rows
+    │
+    ▼
+SELECT
+============
