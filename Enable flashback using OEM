@@ -1,0 +1,95 @@
+In OEM
+
+Targets
+   ↓
+Databases
+   ↓
+Desired Database
+   ↓
+Database Home
+   ↓
+Availability
+   ↓
+Backup & Recovery
+   ↓
+Recovery Settings
+
+will see
+|   |
+| - |
+
+## Instance Recovery
+
+| The fast-start checkpointing feature is enabled by specifying a non-zero desired mean-time to recover (MTTR) value, 
+which will be used to set the FAST\_START\_MTTR\_TARGET initialization parameter. This parameter controls the amount 
+of time the database takes to perform crash recovery for a single instance. When fast-start checkpointing is enabled, 
+Oracle automatically maintains the speed of checkpointing so that the requested MTTR is achieved. 
+Setting the value to 0 will disable this functionality. |
+| --------------------------------------------------------------------------------------------------------------------- |
+| Current Estimated Mean Time To Recover (seconds) |   | 22 |   |                |                    |
+|                                                  |   |    |   |                |                    |
+| Desired Mean Time To Recover                     | 0 |    |   | Minutes 
+
+---keep it 0
+--Then will see
+|   |
+| - |
+Media Recovery
+The database is currently in ARCHIVELOG mode. 
+In ARCHIVELOG mode, hot backups and recovery to the latest time are possible,
+but you must provide space for archived redo log files. If you change the database to ARCHIVELOG mode,
+you should perform a backup immediately. 
+In NOARCHIVELOG mode, only cold backups are possible and data may be lost in the event of database corruption.
+
+--out DB in ARCHIVELOG mode
+--Then will see
+|   |
+| - |
+Fast Recovery
+
+This database is using a fast recovery area.
+The chart shows space used by each file type that is not reclaimable by Oracle. 
+Performing backups to tertiary storage is one way to make space reclaimable. Usable Fast Recovery Area includes free and reclaimable space.
+
+Fast Recovery Area Location	  +FRA
+Fast Recovery Area Size	      170GB
+  Fast Recovery Area Size must be set when the location is set.
+
+Non-reclaimable Fast Recovery Area (MB)	177 --These are files that Oracle currently considers required and therefore cannot reclaim at this time.
+Reclaimable Fast Recovery Area (GB)	15.75 --currently occupied by files that Oracle can potentially reclaim when needed. like old Archived Redo Logs, old Backup pieces, unnessasary Flashback Logs
+Free Fast Recovery Area (GB)	154.08 --space currently available for the FRA.
+
+Fast Recovery Area stores
+│
+├── Archived Redo Logs
+├── Flashback Logs
+├── RMAN Backup Pieces
+├── Image Copies
+└── Other recovery-related files
+
+FRA Size = maximum space Oracle can use
+Free = space that is actually free now
+Reclaimable = occupied space that Oracle may be able to recover when needed
+Non-reclaimable = occupied space currently required for recovery.
+
+--Then will see
+|   |
+| - |
+Enable Flashback Database --click it
+Flashback database can be used for fast database point-in-time recovery, as it returns the database to a prior point-in-time without restoring files. 
+Flashback is the preferred point-in-time recovery method in the recovery wizard when appropriate. The fast recovery area must be set to enable flashback database.
+	
+Flashback Retention Time	24 Hours
+Current size of the flashback logs(GB)	n/a
+Lowest SCN in the flashback data	n/a
+Flashback Time	n/a
+
+--click show sql
+ALTER DATABASE FLASHBACK ON
+
+--click apply 
+Update Message
+The changes have been successfully applied.
+
+
+
