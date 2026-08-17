@@ -1,0 +1,59 @@
+Undo Advisor: Undo Retention and Undo Tablespace Sizing Advice
+
+
+in OEM: performance > home advisors 
+click > 	Automatic Undo Management
+
+Undo Retention Settings
+	Undo Retention (minutes)		15
+	Retention Guarantee		Yes
+
+Undo Tablespace for this Instance
+	Tablespace		UNDOTBS1 
+	Size (MB)		25565 --the size of all datafiles
+	Auto-Extensible		Yes
+
+--run this ot see in toad the numbers of datafiles in UNDOTBS1
+SELECT file_name,
+       bytes/1024/1024 AS size_mb,
+       autoextensible,
+       maxbytes/1024/1024 AS max_mb
+FROM dba_data_files
+WHERE tablespace_name = 'UNDOTBS1';
+
+--the output
++DATA/DB/DATAFILE/undotbs1	                     5120	   NO	      0
++DATA/DB/DATAFILE/undotbs1.259.1112035519        20445	 YES	  32767.984375
+
+******we want to change undo retention in archive to be 1 day******
+--run the advisor first to check it out and then apply
+From OEM
+
+Analysis Period
+	Analysis Time Period		Last Seven Days
+	Desired Undo Retention		Automatically chosen based on longest query in analysis period
+           CHOOSE THIS     	>Specified manually to allow for longer duration queries or flashback
+			Duration : 1 days
+		Run Analysis --CLICK HERE
+
+Analysis Results
+Edit Undo TablespaceEdit Undo Retention
+	Selected Analysis Time Period		Aug 10, 2026 2:00:00 PM EEST To Aug 17, 2026 2:00:00 PM EEST
+	Minimum Required Undo Tablespace Size (MB)		909
+	Recommended Undo Tablespace Size (MB)		553
+		
+	
+	TIP 	Oracle advises that you configure the undo tablespace to be three times the Recommended Undo Tablespace Size to allow for workload fluctuations.
+
+	Potential Problems		No problems found
+	Recommendations		No recommendations
+
+
+-- we have 20GB in the current datafile in Tablespace UNDOTBS1
+so click show SQL will see 
+ALTER SYSTEM SET UNDO_RETENTION = 86400
+
+--then click appy 
+
+--noe will see 
+Duration : 1440 minutes
