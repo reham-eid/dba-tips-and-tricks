@@ -1,0 +1,22 @@
+purge recycle bin from objects older than 2025 in DB1
+
+--see the objects 
+SELECT owner, 
+       object_name, 
+       original_name, 
+       type, 
+       droptime 
+FROM dba_recyclebin 
+WHERE TO_DATE(droptime, 'YYYY-MM-DD:HH24:MI:SS') 
+      < TO_DATE('2025-01-01:00:00:00', 'YYYY-MM-DD:HH24:MI:SS') 
+ORDER BY droptime DESC; 
+--rows count 1050
+
+-- Generate PURGE commands 
+SELECT 'PURGE "' || owner || '"."' || object_name || '";' AS purge_command 
+FROM dba_recyclebin 
+WHERE TO_DATE(droptime, 'YYYY-MM-DD:HH24:MI:SS') 
+      < TO_DATE('2025-01-01', 'YYYY-MM-DD:HH24:MI:SS') 
+ORDER BY droptime DESC; 
+
+--Run the commends 
