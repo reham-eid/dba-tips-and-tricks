@@ -10,7 +10,7 @@ echo $ORACLE_SID
 --Verify that the same version of Oracle Database is installed 
 --Copy the spfile, pfile, and controlfile to their respective directories, if they are not already there 
 
-scp -r /mnt/or-bk/PROD oracle@target:/mnt/or-bk/PROD 
+scp -r /mnt/bk/PROD oracle@target:/mnt/bk/PROD 
 
 --Ensure the password file exists                                                     >>>>> $ORACLE_HOME/dbs 
 
@@ -38,7 +38,7 @@ cd /u03/FRA/
 rm -rf * 
 
 STARTUP NOMOUNT PFILE='/path/to/init<SID>.ora';                  >>>>> Restore with pfile 
-STARTUP NOMOUNT PFILE='/u01/app/oracle/product/19.0.0/db_home/dbs/initMUSTTEST.ora';
+STARTUP NOMOUNT PFILE='/u01/app/oracle/product/19.0.0/db_home/dbs/initTEST.ora';
 
 rman target / 
 RESTORE CONTROLFILE FROM '/mnt/BILD/Requested Backups_copied/2026-02-20-02-00-01/ControlFile_BILD.ctl'; 
