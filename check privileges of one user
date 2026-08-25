@@ -1,0 +1,11 @@
+
+
+SELECT  
+    grantee, 
+    owner, 
+    table_name AS object_name, 
+    type ,
+    privilege 
+FROM dba_tab_privs 
+WHERE grantee = 'MAPP' 
+ORDER BY type, owner, table_name, privilege;
