@@ -1,0 +1,11 @@
+--find Deadlock sessions
+--get ALTER SYSTEM DISCONNECT SESSION statments for these sessions
+--for specific SQL_IDs
+--for sessions still connected to the DB more than 10 mins
+SELECT 'ALTER SYSTEM DISCONNECT SESSION '''||SID||','||SERIAL#||''' IMMEDIATE;'
+FROM V$SESSION
+WHERE USERNAME IN ('B_USER','B2')
+AND SQL_ID in ('bfr53rzkk2g26','559h596d9fv6a')
+AND LOGON_TIME < SYSDATE-TO_DSINTERVAL('00 00:10:00')
+ORDER BY LOGON_TIME;
+
