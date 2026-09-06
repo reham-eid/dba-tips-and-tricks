@@ -1,3 +1,35 @@
+allways monitor OS level
+
+top
+--keep eye on 21:1 id -> idel
+--keep eye on cpu
+
+iostat
+
+--find block session
+
+SELECT DISTINCT
+    b.sid              AS blocker_sid,
+    b.serial#          AS blocker_serial,
+    b.username         AS blocker_user,
+    b.machine          AS blocker_machine,
+    b.program          AS blocker_program,
+    b.sql_id           AS blocker_sql_id,
+    p.spid             AS blocker_os_pid,
+    w.sid              AS blocked_sid,
+    w.serial#          AS blocked_serial,
+    w.username         AS blocked_user,
+    w.event             AS blocked_event,
+    w.seconds_in_wait
+FROM v$session w
+JOIN v$session b
+    ON w.blocking_session = b.sid
+LEFT JOIN v$process p
+    ON b.paddr = p.addr
+WHERE w.blocking_session IS NOT NULL
+ORDER BY w.seconds_in_wait DESC;
+
+
 --find Deadlock sessions
 --get ALTER SYSTEM DISCONNECT SESSION statments for these sessions
 --for specific SQL_IDs
@@ -9,3 +41,17 @@ AND SQL_ID in ('bfr53rzkk2g26','559h596d9fv6a')
 AND LOGON_TIME < SYSDATE-TO_DSINTERVAL('00 00:10:00')
 ORDER BY LOGON_TIME;
 
+--find os pid assotiated with sid
+SELECT
+    s.sid,
+    s.serial#,
+    s.username,
+    p.spid AS os_pid,
+    s.status,
+    s.machine,
+    s.program
+FROM v$session s
+JOIN v$process p
+    ON s.paddr = p.addr
+WHERE s.username = 'APP'
+ORDER BY s.logon_time;
