@@ -1,3 +1,5 @@
+ORA-01031: Insufficient Privileges When Running CREATE OR REPLACE VIEW
+
 Environment: Production
 Category: Database Security / Privileges
 
