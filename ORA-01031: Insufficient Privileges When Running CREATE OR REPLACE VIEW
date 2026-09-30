@@ -1,0 +1,77 @@
+Environment: Production
+Category: Database Security / Privileges
+
+A developer received ORA-01031: insufficient privileges while trying to modify a view.
+
+ORA-01031: insufficient privileges
+Cause:  An attempt was made to perform a database operation without the necessary privileges.
+Action: Ask your database administrator or designated security administrator to grant you the necessary privileges.
+
+It's a pretty clear message: he needed more privileges. But since this was a PROD environment, I had to be careful before granting anything.
+
+I asked him, "What are you running?" He said, "I'm running a view and I want to modify it." So I assumed he was doing an UPDATE.
+
+I checked his grants on the schema, and he already had all DML privileges. That was strange, so I re-ran the same grants from Toad and asked him to try again. Same error.
+
+Then I asked him to show me the exact statement. He sent:
+
+sql
+CREATE OR REPLACE VIEW ...
+
+That's not a query, and it's not an update. It's a script, and it's DDL, not DML. 😂
+
+| **Aspect**          | **DML** (Data Manipulation Language)                                | **DDL** (Data Definition Language)                                   |
+| ------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| **Works on**        | The **data** inside objects                                         | The **structure** of objects                                         |
+| **Examples**        | `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `MERGE`                     | `CREATE`, `ALTER`, `DROP`, `TRUNCATE`, `CREATE OR REPLACE`           |
+| **Privilege type**  | Mostly **object privileges** (e.g. `GRANT UPDATE ON table TO user`) | Mostly **system privileges** (e.g. `CREATE VIEW`, `CREATE ANY VIEW`) |
+| **Commit behavior** | Needs an explicit `COMMIT`                                          | **Auto-commits** and cannot be rolled back                           |
+| **Risk in PROD**    | Changes rows                                                        | Changes the database structure and can break dependent objects       |
+
+Which privilege is needed?
+
+| **Scenario**                                    | **Required Privilege** |
+| ----------------------------------------------- | ---------------------- |
+| Create or replace a view in **your own schema** | `CREATE VIEW`          |
+| Create or replace a view in **another schema**  | `CREATE ANY VIEW`      |
+
+
+Note: the view owner also needs direct access to the underlying tables (granted directly, not through a role) for the view to compile.
+
+
+After discussing it with the DBA team, since it was only a view, we granted:
+
+sql
+GRANT CREATE ANY VIEW TO OMAR;
+
+And the issue was solved. ✅
+
+
+Security Considerations for PROD:
+-> CREATE ANY VIEW allows creating views in any schema, which is a broad privilege.
+-> A safer alternative is granting CREATE VIEW only, if the view lives in the developer's own schema.
+-> Another option is to have the DBA team deploy the change through the standard release process.
+
+If access is temporary, revoke it after the work is done:
+sql
+REVOKE CREATE ANY VIEW FROM OMAR;
+
+
+Lesson learned: 
+Always ask for the exact statement before granting anything in PROD. "Update" and "modify" can mean very different things.
+DML privileges do not include DDL. They are separate categories.
+Grant the minimum privilege needed (least privilege), and prefer temporary access for PROD.
+Get DBA team approval before any privilege change in production.
+
+Quick Reference
+sql
+-- Check system privileges granted to a user
+SELECT * FROM dba_sys_privs WHERE grantee = 'OMAR';
+
+-- Check object privileges granted to a user
+SELECT * FROM dba_tab_privs WHERE grantee = 'OMAR';
+
+-- Check roles granted to a user
+SELECT * FROM dba_role_privs WHERE grantee = 'OMAR';
+
+
