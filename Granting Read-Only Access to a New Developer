@@ -1,0 +1,51 @@
+Granting Read-Only Access to a New commer in Developer Team : 
+========READ ANY TABLE vs. SELECT ANY TABLE========
+
+A new member joined the developer team and needed read-only access to the database.
+
+I searched for existing read-only roles using the Roles section of the Schema Browser in **Toad**. Two similar roles came up:
+
+Role	                      System privilege granted
+READONLYROLE	                   READ ANY TABLE
+READ_ONLY_ROLE	                SELECT ANY TABLE
+
+Another way to find this (without Toad):
+-- Find candidate roles
+SELECT role FROM dba_roles WHERE UPPER(role) LIKE '%READ%';
+
+-- See which system privileges each role contains
+SELECT role, privilege
+FROM   role_sys_privs
+WHERE  role IN ('READONLYROLE', 'READ_ONLY_ROLE');
+
+-- See which users already have these roles
+SELECT grantee, granted_role
+FROM   dba_role_privs
+WHERE  granted_role IN ('READONLYROLE', 'READ_ONLY_ROLE');
+
+but what's the diffrent?
+
+can make blocking if he got  grant select any table 
+/but/
+grant read any table  doesn't have any FOR UPDATE or LOCK TABLE
+
+### The Difference
+
+The main difference is that SELECT ANY TABLE allows the user to use SELECT ... FOR UPDATE, which can acquire row locks and potentially cause blocking.
+
+READ ANY TABLE is intended for read-only access and does not allow SELECT ... FOR UPDATE.
+
+|                               | `SELECT ANY TABLE` | `READ ANY TABLE` |
+| ----------------------------- | ------------------ | ---------------- |
+| **Available since**           | Older versions     | 12c (12.1.0.2+) |
+| **Plain `SELECT`**            | ✅                | ✅              |
+| **`SELECT ... FOR UPDATE`**   | ✅                | ❌              |
+| **`LOCK TABLE`**              | ✅                | ❌              |
+| **Can block other sessions?** | **Yes**           | **No**           |
+| **Truly read-only?**          | ❌               | ✅               |
+
+
+
+-- Confirm the role was granted
+SELECT * FROM dba_role_privs WHERE grantee = 'NEW_DEV';
+
