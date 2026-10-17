@@ -1,3 +1,6 @@
+command:
+sysctl -a | grep -E 'kernel.shmmax|kernel.shmall|kernel.shmmni'
+
 What is SHMMAX?
 SHMMAX defines the maximum size of a single shared memory segment on Linux.
 
