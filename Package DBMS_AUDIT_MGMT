@@ -1,0 +1,68 @@
+1. What is DBMS_AUDIT_MGMT?
+
+DBMS_AUDIT_MGMT is Oracle’s package for managing audit-trail storage and cleanup. It helps configure where database audit records are stored, set archive cut-off timestamps, 
+create purge jobs, and inspect cleanup configuration/history. It does not itself guarantee that audit files have been copied to a secure archive.
+
+->Configure audit-trail management properties.
+->Set and inspect last archive timestamps used as purge boundaries.
+->Create, inspect, and manage scheduled audit cleanup jobs.
+->Purge eligible records/files according to the selected trail and cutoff rules.
+
+2.Views used to inspect audit management
+# DBA_AUDIT_MGMT_CONFIG_PARAMS -> describe configured management properties.
+# DBA_AUDIT_MGMT_LAST_ARCH_TS  -> Shows the last archive timestamp registered for a trail. This timestamp is a logical cleanup boundary; it does not prove that a backup/export/archive file physically exists.
+# DBA_AUDIT_MGMT_CLEANUP_JOBS  -> Shows cleanup jobs created/registered through DBMS_AUDIT_MGMT including trail, job name/status, and frequency
+
+/*==============================================================
+  Unified Audit Trail: Retention (7 days) & Daily Purge
+==============================================================*/
+
+1-Check unified audit record volume
+-- Count one day ago
+SELECT COUNT(*) AS total_rows FROM unified_audit_trail; 
+--110467057
+
+--current day 
+SELECT COUNT(*) AS total_records,
+       MIN(event_timestamp) AS oldest_record,
+       MAX(event_timestamp) AS newest_record
+FROM unified_audit_trail;
+--110845870	   11/9/2023 5:22:25.303483 PM	   10/18/2026 10:56:20.412384 AM
+
+-- Growth = 110,845,870 - 110,467,057 = 378,813 rows/day
+-- so approximately  378,813 audit rows per day 
+
+2- Check which job maintains last_archive_ts
+SELECT *
+FROM   dba_scheduler_jobs
+WHERE  UPPER(job_action) LIKE '%AUDIT_MGMT%'
+   OR  UPPER(job_name)   LIKE '%AUDIT%';
+--SYS	JOB_PURGE_AUDIT_RECORDS		REGULAR	SYS					PLSQL_BLOCK	BEGIN DBMS_AUDIT_MGMT.SET_LAST_ARCHIVE_TIMESTAMP(DBMS_AUDIT_MGMT.AUDIT_TRAIL_UNIFIED, TRUNC(SYSTIMESTAMP)-7); END;	0			CALENDAR	11/2/2022 3:36:34.746185 PM +02:00	freq=daily; byhour=0; byminute=0; bysecond=0;								
+--so this job runs daily
+
+(Only if this job did not exist, you would create your own daily scheduler job running the same SET_LAST_ARCHIVE_TIMESTAMP call.)
+
+3-Verify there is no clean audit job
+SELECT *
+FROM   dba_audit_mgmt_cleanup_jobs;
+--no rows (nothing is actually deleting audit records)
+
+4- Creating a unified audit purge job
+BEGIN
+  DBMS_AUDIT_MGMT.CREATE_PURGE_JOB(
+    audit_trail_type            => DBMS_AUDIT_MGMT.AUDIT_TRAIL_UNIFIED,
+    audit_trail_purge_interval   => 720, --runs every 30 days
+    audit_trail_purge_name       => 'UNIFIED_AUDIT_CLEANUP',
+    use_last_arch_timestamp     => TRUE --restricts deletion to records older than the registered archive boundary.
+  );
+END;
+/
+
+4-Verify
+-- Boundary (should be at 12:00:00 AM , 7 days ago):
+SELECT audit_trail, last_archive_ts
+FROM   dba_audit_mgmt_last_arch_ts;
+
+-- Purge job exists and uses the boundary:
+SELECT job_name, job_status, job_frequency, use_last_arch_timestamp
+FROM   dba_audit_mgmt_cleanup_jobs;
