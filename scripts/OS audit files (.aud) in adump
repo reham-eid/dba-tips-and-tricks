@@ -1,0 +1,11 @@
+These are separate from the unified audit table. Oracle writes .aud files into the adump directory (for example for SYSDBA connections). 
+Nothing inside the database removes them by default, so they accumulate on disk. A Linux cron job handles it. 
+
+crontab -e 
+0 2 1,16 * * /usr/bin/find /u01/app/oracle/admin/DB/adump -type f -mtime +30 -name '*.aud' -exec rm -f {} ; >> /u01/aud_cleanup.log 2>&1 
+
+cd /u01/ 
+
+touch aud_cleanup.log 
+chmod 755 aud_cleanup.log 
+
