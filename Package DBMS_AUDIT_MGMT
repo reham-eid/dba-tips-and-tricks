@@ -66,3 +66,19 @@ FROM   dba_audit_mgmt_last_arch_ts;
 -- Purge job exists and uses the boundary:
 SELECT job_name, job_status, job_frequency, use_last_arch_timestamp
 FROM   dba_audit_mgmt_cleanup_jobs;
+
+
+-- Case: find the queries a user ran during a specific time window.
+
+SELECT 
+    EVENT_TIMESTAMP, 
+    ACTION_NAME, 
+    SQL_TEXT 
+FROM UNIFIED_AUDIT_TRAIL 
+WHERE DBUSERNAME = 'LOL' 
+  AND EVENT_TIMESTAMP >= TIMESTAMP '2026-08-16 00:00:00' 
+  AND EVENT_TIMESTAMP <  TIMESTAMP '2026-08-17 00:00:00' 
+  AND SQL_TEXT IS NOT NULL 
+ORDER BY EVENT_TIMESTAMP; 
+
+Note: We can't retrieve more than 7 days as our last archive timestamp is 7 days 
