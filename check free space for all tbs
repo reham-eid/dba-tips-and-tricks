@@ -1,0 +1,22 @@
+SELECT ts.tablespace_name, 
+       ts.status, 
+       ts.contents, 
+       ROUND(SUM(df.bytes) / 1024 / 1024, 2) AS total_size_MB, 
+       ROUND(SUM(df.bytes - NVL(fs.bytes, 0)) / 1024 / 1024, 2) AS used_space_MB, 
+       ROUND(SUM(NVL(fs.bytes, 0)) / 1024 / 1024, 2) AS free_space_MB 
+FROM dba_tablespaces ts 
+JOIN dba_data_files df ON ts.tablespace_name = df.tablespace_name 
+LEFT JOIN dba_free_space fs ON df.file_id = fs.file_id 
+WHERE ts.tablespace_name != 'TEMP'  -- Exclude TEMP tablespace from the main calculation 
+GROUP BY ts.tablespace_name, ts.status, ts.contents 
+UNION ALL 
+SELECT 'TEMP' AS tablespace_name, 
+       'ONLINE' AS status, 
+       'TEMPORARY' AS contents, 
+       ROUND(SUM(df.bytes) / 1024 / 1024, 2) AS total_size_MB, 
+       ROUND(SUM(df.bytes - NVL(fs.bytes, 0)) / 1024 / 1024, 2) AS used_space_MB, 
+       ROUND(SUM(NVL(fs.bytes, 0)) / 1024 / 1024, 2) AS free_space_MB 
+FROM dba_temp_files df 
+LEFT JOIN dba_free_space fs ON df.file_id = fs.file_id 
+GROUP BY 'TEMP' 
+ORDER BY tablespace_name; 
