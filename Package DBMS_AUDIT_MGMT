@@ -67,9 +67,16 @@ FROM   dba_audit_mgmt_last_arch_ts;
 SELECT job_name, job_status, job_frequency, use_last_arch_timestamp
 FROM   dba_audit_mgmt_cleanup_jobs;
 
+-- Case: show failed database actions (for example failed logins), newest first.
+SELECT event_timestamp, 
+        dbusername, 
+        userhost, 
+        return_code 
+FROM unified_audit_trail 
+WHERE return_code <> 0 
+ORDER BY event_timestamp DESC; 
 
 -- Case: find the queries a user ran during a specific time window.
-
 SELECT 
     EVENT_TIMESTAMP, 
     ACTION_NAME, 
@@ -82,3 +89,5 @@ WHERE DBUSERNAME = 'LOL'
 ORDER BY EVENT_TIMESTAMP; 
 
 Note: We can't retrieve more than 7 days as our last archive timestamp is 7 days 
+
+
