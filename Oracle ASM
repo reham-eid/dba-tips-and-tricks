@@ -1,2 +1,22 @@
 --show ASM disk groups
 SELECT name, state, total_mb, free_mb FROM v$asm_diskgroup;
+
+ 
+
+ Situation	ASM (+DATA)	File System (/u01/oradata)
+Leave the file name empty	Works. Oracle creates an OMF name (requires db_create_file_dest = '+DATA')	Works. Oracle creates an OMF name (requires db_create_file_dest = '/u01/oradata')
+Give a normal name (e.g. +DATA/system02.dbf or /u01/oradata/system02.dbf)	Usually works. Oracle creates the file with an internal name and an alias with your name (the alias directory must exist)	Works
+Give a full OMF-style name	Fails with ORA-01276 when adding a new file	Fails with ORA-01276 when adding a new file
+
+
+ | Situation                                                                      | ASM (`+DATA`)                                                                                                                                     | File System (`/u01/oradata`)                                                         |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Leave the file name empty                                                      | Works — Oracle creates an OMF name. Requires `DB_CREATE_FILE_DEST = '+DATA'`.                                                                     | Works — Oracle creates an OMF name. Requires `DB_CREATE_FILE_DEST = '/u01/oradata'`. |
+| Give a normal name (e.g., `+DATA/system02.dbf` or `/u01/oradata/system02.dbf`) | Usually works — Oracle creates the file and may create an alias using the specified name. The ASM alias directory must exist if one is specified. | Works — Oracle creates the file using the specified path and name.                   |
+| Give a full OMF-style name                                                     | Fails with `ORA-01276` when adding a new file.                                                                                                    | Fails with `ORA-01276` when adding a new file.                                       |
+
+Why the difference? 
+On ASM, almost every file is treated as an Oracle Managed File. Oracle is very strict — it does not allow you to invent names that look like OMF names. 
+On File System, Oracle is more flexible. Even if DB_CREATE_FILE_DEST is set, you can still specify a normal file name (without the OMF pattern), and Oracle accepts it. 
+
+ 
