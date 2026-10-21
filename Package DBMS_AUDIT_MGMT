@@ -64,8 +64,8 @@ SELECT audit_trail, last_archive_ts
 FROM   dba_audit_mgmt_last_arch_ts;
 
 -- Purge job exists and uses the boundary:
-SELECT job_name, job_status, job_frequency, use_last_arch_timestamp
-FROM   dba_audit_mgmt_cleanup_jobs;
+SELECT * 
+FROM   dba_audit_mgmt_cleanup_jobs; 
 
 ** Case: show failed database actions (for example failed logins), newest first.
 SELECT event_timestamp, 
