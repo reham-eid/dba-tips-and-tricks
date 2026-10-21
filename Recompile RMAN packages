@@ -1,0 +1,27 @@
+--Notce in trace file
+
+cd /u01/app/oracle/diag/rdbms/db1/DB1/trace/
+
+tail -f alert_DB1.log 
+
+/*
+PL/SQL package SYS.DBMS_BACKUP_RESTORE version  is not current 
+PL/SQL package SYS.DBMS_RCVMAN version 19.03.00.00 is too old 
+*/
+ 
+
+FIX 
+
+Recompile the related packages of RMAN with the following commands: 
+
+sqlplus / as sysdba 
+
+@$ORACLE_HOME/rdbms/admin/dbmsrman.sql 
+
+@$ORACLE_HOME/rdbms/admin/prvtrmns.plb 
+
+@$ORACLE_HOME/rdbms/admin/dbmsbkrs.sql 
+
+@$ORACLE_HOME/rdbms/admin/prvtbkrs.plb 
+
+@$ORACLE_HOME/rdbms/admin/utlrp.sql 
